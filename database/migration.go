@@ -4,15 +4,11 @@ package database
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 	"time"
-	"uas-pelaporan-prestasi-backend/app/model" // import model kalau udah ada achievement.go & user.go
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -29,7 +25,7 @@ func SeedDummyData() {
 	}
 	roleIDs := make(map[string]string)
 	for name, desc := range roles {
-		var id uuid.UUID
+		var id string
 		err := PostgresDB.QueryRow("SELECT id FROM roles WHERE name = $1", name).Scan(&id)
 		if err == sql.ErrNoRows {
 			err = PostgresDB.QueryRow(
@@ -41,13 +37,13 @@ func SeedDummyData() {
 			}
 			log.Printf("✅ Role Created: %s", name)
 		}
-		roleIDs[name] = id.String()
+		roleIDs[name] = id
 	}
 
 	// 2. SEED USERS
 	passwordHash, _ := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost) // Password default hashed
-	// Admin
-	adminUserID := seedUser(PostgresDB, "admin", "admin@univ.ac.id", string(passwordHash), "Super Admin", roleIDs["Admin"])
+	// Admin (ga dipake ID-nya, jadi langsung seed tanpa var)
+	seedUser(PostgresDB, "admin", "admin@univ.ac.id", string(passwordHash), "Super Admin", roleIDs["Admin"])
 
 	// Dosen
 	dosenUserID := seedUser(PostgresDB, "dosen1", "dosen1@univ.ac.id", string(passwordHash), "Dr. Budi Santoso", roleIDs["Dosen Wali"])
@@ -57,7 +53,7 @@ func SeedDummyData() {
 
 	// 3. SEED PROFILES
 	// Lecturer (Dosen)
-	var lecturerID uuid.UUID
+	var lecturerID string
 	err := PostgresDB.QueryRow("SELECT id FROM lecturers WHERE user_id = $1", dosenUserID).Scan(&lecturerID)
 	if err == sql.ErrNoRows {
 		err = PostgresDB.QueryRow(`
@@ -72,7 +68,7 @@ func SeedDummyData() {
 	}
 
 	// Student (Mahasiswa) - Link advisor ke lecturerID
-	var studentID uuid.UUID
+	var studentID string
 	err = PostgresDB.QueryRow("SELECT id FROM students WHERE user_id = $1", mhsUserID).Scan(&studentID)
 	if err == sql.ErrNoRows {
 		err = PostgresDB.QueryRow(`
@@ -94,7 +90,7 @@ func SeedDummyData() {
 		// Insert Mongo
 		achCollection := MongoDB.Collection("achievements")
 		mongoDoc := bson.M{
-			"student_id": studentID.String(), // UUID string
+			"student_id": studentID, // UUID as string
 			"type":       "competition",
 			"title":      "Juara 1 Hackathon Nasional",
 			"description": "Menang lomba coding di Jakarta",
@@ -140,8 +136,8 @@ func SeedDummyData() {
 }
 
 // seedUser helper
-func seedUser(db *sql.DB, username, email, passwordHash, fullName, roleID string) uuid.UUID {
-	var id uuid.UUID
+func seedUser(db *sql.DB, username, email, passwordHash, fullName, roleID string) string {
+	var id string
 	err := db.QueryRow("SELECT id FROM users WHERE email = $1", email).Scan(&id)
 	if err == sql.ErrNoRows {
 		err = db.QueryRow(`
