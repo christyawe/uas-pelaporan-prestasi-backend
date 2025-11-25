@@ -13,8 +13,7 @@ func main() {
 	config.Load()
 
 	// Connect to Databases
-	database.ConnectPostgres()
-	database.ConnectMongo()
+	database.Connect()
 
 	// Initialize Fiber App
 	app := config.New()
