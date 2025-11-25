@@ -14,6 +14,9 @@ func main() {
 
 	// Connect to Databases
 	database.Connect()
+	if config.Env("APP_ENV", "development") == "development" {
+    database.SeedDummyData()
+}
 
 	// Initialize Fiber App
 	app := config.New()
